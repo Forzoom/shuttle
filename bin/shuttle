@@ -1,0 +1,417 @@
+#! /usr/bin/env node
+const process = require('process');
+const shuttle = require('../dist/shuttle.cjs.js');
+const argv = require('minimist')(process.argv.slice(2), {
+    boolean: true,
+});
+const fs = require('fs');
+const path = require('path');
+const postcss = require('postcss');
+const less = require('postcss-less');
+const pkg = require('../package.json');
+
+const helpText = `
+Usage: 
+     -h
+    --help 帮助内容
+     -v
+    --version 版本
+     -f
+    --file 配置文件路径
+     -s
+    --src  源文件路径
+     -d
+    --dst 写入文件路径
+     -p
+    --parser 解析器 'jsVue' | 'tsClassVue'
+     -g
+    --generator 生成器 'jsVue' | 'tsClassVue'
+    --generator-plugin 生成器插件 addImportStore addParamsTypeAnnotation
+    --parser-generator jsStore | jsRouter | less
+`;
+
+const cfgTpl = `
+[
+    // jsVue 转 tsClassVue
+    {
+        "src": "/path/to/src", // 可以是文件/文件夹
+        "dst": "/path/to/dst" // 可以是文件/文件夹
+        "parser": "jsVue",
+        "generator": "tsClassVue",
+        "generatorPlugin": [
+            "addImportStore",
+            "addParamsTypeAnnotation"
+        ]
+    },
+    // 处理 js 形式的 store 文件
+    {
+        "src": "/path/to/src", // 可以是文件/文件夹
+        "dst": "/path/to/dst" // 可以是文件/文件夹
+        "parserGenerator": "jsStore"
+    },
+    // 处理 js 形式的 router 文件
+    {
+        "src": "/path/to/src", // 可以是文件/文件夹
+        "dst": "/path/to/dst" // 可以是文件/文件夹
+        "parserGenerator": "jsRouter"
+    },
+];
+`;
+
+if (argv.v || argv.version) {
+    console.log(pkg.version);
+    return;
+}
+
+// help
+if (argv.h || argv.help) {
+    console.log(helpText);
+    return;
+}
+
+// config template
+if (argv['cfg-tpl']) {
+    return;
+}
+
+const cfg = argv.f || argv.file;
+const src = argv.s || argv.src;
+const dst = argv.d || argv.dst;
+const parser = argv.p || argv.parser;
+const generator = argv.g || argv.generator;
+const parserPlugins = argv['parser-plugin'] || [];
+const generatorPlugins = argv['generator-plugin'] || [];
+const parserGenerator = argv['parser-generator'];
+
+/**
+ * 处理parser和generator
+ * @param parserName
+ * @param generatorName 
+ * @param src 
+ * @param dst 
+ */
+function handle(parserName, generatorName, src, dst, parserPlugins, generatorPlugins) {
+    // 生成parser
+    let parser = null;
+    switch (parserName) {
+    case 'jsVue': parser = new shuttle.JSVueParser.default(); break;
+    case 'tsClassVue': parser = new shuttle.TSClassVueParser.default(); break;
+    }
+
+    // 生成generator
+    let generator = null;
+    switch (generatorName) {
+    case 'jsVue': generator = new shuttle.JSVueGenerator.default(); break;
+    case 'tsClassVue': generator = new shuttle.TSClassVueGenerator.default(); break;
+    }
+
+    for (const pluginName of generatorPlugins || []) {
+        const plugin = shuttle.genPlugin[pluginName];
+        if (plugin) {
+            generator.addPlugin(plugin);
+        }
+    }
+
+    recursive(src, dst, (src, dst) => {
+        try {
+            // 解析
+            const parseResult = parser.handleFile(src);
+            // 生成
+            generator.handleFile(parseResult, dst);
+        } catch (e) {
+            console.error(e);
+        }
+    });
+}
+
+/**
+ * 处理paserGenerator
+ * @param parserGeneratorName
+ * @param src 
+ * @param dst 
+ */
+async function handleParserGenerator(parserGeneratorName, src, dst) {
+    if (parserGeneratorName === 'less') {
+        recursive(src, dst, (src, dst) => {
+            handleVueFile(src, dst);
+        });
+    } else {
+        let parserGen = null;
+        switch (parserGeneratorName) {
+        case 'jsStore': parserGen = new shuttle.JSStoreParserGenerator.default(); break;
+        case 'jsRouter': parserGen = new shuttle.JSRouterParserGenerator.default(); break;
+        }
+
+        recursive(src, dst, (src, dst) => {
+            parserGen.handle(src, dst);
+        });
+    }
+}
+
+/**
+ * 处理config中的内容
+ * @param cfg 配置路径
+ */
+function handleCfg(cfg) {
+    const configOptions = JSON.parse(fs.readFileSync(cfg).toString('utf-8'));
+    if (!Array.isArray(configOptions)) {
+        configOptions = [ configOptions ];
+    }
+
+    for (const opt of configOptions) {
+        const {
+            parser,
+            generator,
+            parserPlugins,
+            generatorPlugins,
+            parserGenerator,
+            src,
+            dst,
+        } = opt;
+
+        if (parserGenerator) {
+            handleParserGenerator(parserGenerator, src, dst);
+        } else if (parser, generator) {
+            handle(parser, generator, src, dst, parserPlugins || [], generatorPlugins || []);
+        }
+    }
+}
+
+/**
+ * 处理文件
+ * @param input 可以是文件/文件夹
+ * @param output 
+ * @param callback 
+ */
+function recursive(input, output, callback) {
+    const queue = [ input ];
+
+    // 深度优先搜索
+    while (queue.length > 0) {
+        const filePath = queue.shift();
+        if (!filePath) {
+            continue;
+        }
+        const stats = fs.statSync(filePath);
+        const isDirectory = stats.isDirectory();
+        if (isDirectory) {
+            // 如果是文件夹，加入queue
+            const children = fs.readdirSync(filePath);
+            queue.unshift(...children.map(child => path.join(filePath, child)));
+        } else {
+            const outputPath = output + filePath.substr(input.length);
+            fs.mkdirSync(path.dirname(outputPath), {
+                recursive: true,
+                mode: 0o755,
+            });
+            callback(filePath, outputPath);
+        }
+    }
+}
+
+/**
+ * 移除unit函数
+ * @param {string} str
+ */
+function _stripUnit(str) {
+    return /unit\(.*\)/.test(str) ? str.replace(/unit\(([^()]*?)\)/g, '$1') : str;
+}
+
+/** 添加px */
+function _addUnit(str) {
+    const n = Number(str);
+    return isNaN(n) ? str : str + 'px';
+}
+
+/**
+ * 将px2rem系列代码移除
+ */
+const plugin = postcss.plugin('postcss-test-plugin', (opts) => {
+    opts = opts || {};
+    return (root, result) => {
+        // console.log('target1', root);
+        root.walkRules((rule) => {
+            // decl.value = '40px';
+            // console.log(rule);
+            // rule.walkAtRules((atRule) => {
+            //     console.log(atRule);
+            // });
+
+            for (var i = 0, len = (rule.nodes || []).length; i < len; i++) {
+                var node = rule.nodes[i];
+                if (node.type == 'atrule' && node.name == 'px2rem6') {
+                    const params = node.params.substring(1, node.params.length - 1).split(/\s*,\s*/);
+                    const prop = params[0];
+                    const value = params.slice(1).map(value => _addUnit(_stripUnit(value))).join(' ');
+                    const decl = postcss.decl({ prop, value });
+                    decl.important = node.important;
+                    decl.raws.before = node.raws.before;
+                    rule.nodes[i] = decl;
+                }
+            }
+        });
+    };
+});
+
+const enhancedPostcss = postcss([plugin]);
+
+function parseAttr(str) {
+    const parts = str.replace(/[ ]+/g, ' ').split(' ');
+    const attr = {};
+    for (const part of parts) {
+        const match = part.match(/([a-z]+)="([a-z]+)"/);
+        if (match) {
+            const [ _, key, value ] = match;
+            attr[key] = value;
+        }
+    }
+    return attr;
+}
+
+function formatAttr(attrs) {
+    if (!attrs) {
+        return '';
+    }
+    const keys = Object.keys(attrs);
+    return keys.map(key => `${key}="${attrs[key]}"`).join(' ');
+}
+
+/**
+ * 从Vue文件中解析三个部分，比较困难的是template部分，因为可能会存在多个template的情况，目前先只解析script和style吧
+ * @param code 代码
+ */
+function parseBlock(code) {
+    const result = [];
+    const startRegexp = /<(script|template|style)([a-zA-Z0-9'"=!|& ()-:]*)?>/;
+    const endRegexp = /<\/(script|template|style)>/;
+
+    let terminate = false;
+    let index = 0;
+    let stack = [];
+    while (!terminate) {
+        let startMatch = code.substr(index).match(startRegexp);
+        let endMatch = code.substr(index).match(endRegexp);
+
+        if (startMatch && endMatch) {
+            const [ startTag, startType, startAttrStr ] = startMatch;
+            const [ endTag, endType ] = endMatch;
+
+            const startPos = code.indexOf(startTag, index);
+            const endPos = code.indexOf(endTag, index);
+
+            if (startPos < endPos) {
+                stack.push({
+                    tag: startTag,
+                    attr: startAttrStr,
+                    type: startType,
+                    pos: startPos,
+                });
+
+                index = startPos + startTag.length;
+            } else {
+                if (stack.length > 0) {
+                    // 弹栈
+                    if (endType === stack[stack.length - 1].type) {
+                        const start = stack.pop();
+                        if (stack.length === 0) {
+                            result.push({
+                                type: start.type,
+                                content: code.substring(start.pos + start.tag.length, endPos),
+                                attr: start.attr ? parseAttr(start.attr) : null,
+                            });
+                        }
+                    }
+                }
+                index = endPos + endTag.length;
+            }
+        } else if (endMatch) {
+            const [ endTag, endType ] = endMatch;
+
+            const endPos = code.indexOf(endTag, index);
+
+            if (stack.length > 0) {
+                // 弹栈
+                if (endType === stack[stack.length - 1].type) {
+                    const start = stack.pop();
+                    if (stack.length === 0) {
+                        result.push({
+                            type: start.type,
+                            content: code.substring(start.pos + start.tag.length, endPos),
+                            attr: start.attr ? parseAttr(start.attr) : null,
+                        });
+                    }
+                }
+            }
+            index = endPos + endTag.length;
+        } else {
+            terminate = true;
+        }
+    }
+
+    return result;
+}
+
+/**
+ * 根据代码block生成代码
+ * @param blocks 所有的代码block
+ */
+function formatBlock(blocks) {
+    return blocks.map(block => {
+        const attr = formatAttr(block.attr);
+        return `<${block.type}${attr ? ' ' + attr : ''}>${block.content}</${block.type}>\n`;
+    }).join('');
+}
+
+/**
+ * 处理代码
+ */
+async function handleLessCode(code) {
+    return enhancedPostcss.process(code, { syntax: less });
+}
+
+/**
+ * 处理less文件
+ */
+async function handleLessFile(src, dst) {
+    dst = dst || src;
+    const code = fs.readFileSync(src, 'utf-8');
+    const newCode = (await handleLessCode(code)).css;
+    fs.writeFileSync(dst, newCode.toString());
+}
+
+/**
+ * 处理vue文件
+ */
+async function handleVueFile(src, dst) {
+    dst = dst || src;
+    const code = fs.readFileSync(src, 'utf-8');
+    const blocks = parseBlock(code);
+    if (!blocks || blocks.length === 0) {
+        return;
+    }
+    for (const block of blocks.filter(block => block.type === 'style')) {
+        block.content = (await handleLessCode(block.content)).css;
+    }
+
+    fs.writeFileSync(dst, formatBlock(blocks));
+}
+
+if (cfg) {
+    handleCfg(cfg);
+} else if (parser && generator && src && dst) {
+    handle(parser, generator, src, dst, parserPlugins, generatorPlugins);
+} else if (parserGenerator) {
+    handleParserGenerator(parserGenerator, src, dst);
+} else {
+    const parts = process.cwd().split(path.sep);
+    console.log(parts);
+    while (parts.length > 0) {
+        const filePath = path.sep + path.join(...parts, 'shuttle.config.json');
+        console.log(filePath);
+        if (fs.existsSync(filePath)) {
+            handleCfg(filePath);
+            break;
+        }
+        parts.pop();
+    }
+}

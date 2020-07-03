@@ -1,0 +1,47 @@
+{
+  "name": "@forzoom/shuttle",
+  "version": "0.0.7",
+  "main": "dist/shuttle.cjs.js",
+  "module": "dist/shuttle.esm.js",
+  "types": "./types",
+  "license": "MIT",
+  "dependencies": {
+    "postcss": "^7.0.32",
+    "postcss-less": "^3.1.4"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.8.3",
+    "@babel/parser": "^7.7.7",
+    "@babel/plugin-proposal-class-properties": "^7.8.3",
+    "@babel/plugin-transform-async-to-generator": "^7.8.3",
+    "@babel/plugin-transform-runtime": "^7.8.3",
+    "@babel/preset-env": "^7.8.4",
+    "@babel/preset-typescript": "^7.9.0",
+    "@babel/runtime": "^7.8.4",
+    "@rollup/plugin-alias": "^3.1.0",
+    "@rollup/plugin-babel": "^5.0.0",
+    "@types/chai": "^4.2.11",
+    "@types/mocha": "^7.0.2",
+    "@types/node": "^14.0.14",
+    "@typescript-eslint/typescript-estree": "^2.12.1-alpha.26",
+    "chai": "^4.2.0",
+    "minimist": "^1.2.5",
+    "mocha": "^8.0.1",
+    "recast": "^0.18.5",
+    "rollup": "^2.18.1",
+    "rollup-plugin-commonjs": "^10.1.0",
+    "rollup-plugin-node-builtins": "^2.1.2",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "source-map": "^0.7.3",
+    "ts-node": "^8.10.2",
+    "typescript": "^3.7.4"
+  },
+  "bin": {
+    "shuttle": "./bin/shuttle"
+  },
+  "scripts": {
+    "build": "node build/build.js",
+    "shuttle:cfg": "node ./bin/shuttle",
+    "test:unit": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -r ts-node/register ./test/unit/spec/util.ts"
+  }
+}
