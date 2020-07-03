@@ -18,6 +18,7 @@ Usage:
     --version 版本
      -f
     --file 配置文件路径
+    --cfg-tpl 查看config file template
      -s
     --src  源文件路径
      -d
@@ -71,6 +72,7 @@ if (argv.h || argv.help) {
 
 // config template
 if (argv['cfg-tpl']) {
+    console.log(cfgTpl);
     return;
 }
 
