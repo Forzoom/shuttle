@@ -2,7 +2,8 @@
 
 1. 补充ast-types/def相关的说明
 
-> 项目整理中，完成后补上Github链接
+> 文章以及代码存放于[Github](https://github.com/Forzoom/shuttle)。
+> 已打包并上传到[npm @forzoom/shuttle](https://www.npmjs.com/package/@forzoom/shuttle)
 
 [Typescript](https://www.typescriptlang.org)正广泛成为前端工程师开发项目的首选，我手头上有一些使用js编写的Vue项目，最近准备使用ts重写。项目中单单是页面的数量就超过100个，更不用提组件的数量，如果对这么多Vue文件进行一一重写的话，工程量浩大，并且十分枯燥。其实在此之前也手动转换过几个项目，发现转换过程大多都是重复劳动，是有可能通过程序实现自动转换。当然从js转换成ts，不可避免地会出现类型问题，所以只要求完成重复性地工作，当真的需要类型信息时，还是需要手动处理。
 
@@ -209,13 +210,17 @@ while (queue.length > 0) {
 }
 ```
 
-### 后续内容
+### 在开发环境中使用
 
 目前在自己的项目上测试，虽然已经把好多工作量自动化了，但还是好多啊（摔！
 
-还有一个我创建的npm组件库large-list，之前使用class的形式来写，应该是因为引入了vue-property-decorator逻辑，所以最终使用rollup打包不进行uglify情况下有27K大小。使用这个库将class形式代码转换成VueOptions形式，之后再使用rollup打包同样不进行uglify只有4K大小，既能让我使用class形式来编写代码，也让最终发布用的代码足够地小。
+#### 用于减小项目体积
 
-另外既然可以完成迁移到ts语法的过程，在Vue@3正式发布之后，可能会考虑是否能将旧代码，转换成composition-api的格式。
+我创建了一个npm组件库[large-list](https://www.npmjs.com/package/large-list)，使用class style，因为引入了vue-property-decorator以及使用ts编写的，所以最终使用rollup打包不进行uglify情况下有27K大小。将其从class style代码转换成VueOptions style，之后再使用rollup打包同样不进行uglify只有4K大小，既能让我使用class形式来编写代码，也让最终发布用的代码足够地小。
+
+#### 用于帮助项目从js转换成ts
+
+我的一个项目是在vue-cli@2版本时创建的代码，在重构到ts过程中基本完全使用该库，总计修改接近300个文件。
 
 <img src="https://static.playground.forzoom.tech/article/footer.jpg" />
 
