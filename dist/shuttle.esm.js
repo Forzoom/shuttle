@@ -36041,7 +36041,7 @@ function parseAttr(str) {
   try {
     for (_iterator.s(); !(_step = _iterator.n()).done;) {
       var part = _step.value;
-      var match = part.match(/([a-z]+)="([a-z]+)"/);
+      var match = part.match(/([a-z]+)=["']([a-z]+)["']/);
 
       if (match) {
         var _match = slicedToArray(match, 3),
@@ -36079,7 +36079,7 @@ function formatAttr(attrs) {
 
 function parseBlock(code) {
   var result = [];
-  var startRegexp = /<(script|template|style)([a-z'"= ]*)?>/;
+  var startRegexp = /<(script|template|style)(.*["'])?>/;
   var endRegexp = /<\/(script|template|style)>/;
   var terminate = false;
   var index = 0;

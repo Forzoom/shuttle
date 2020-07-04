@@ -39,7 +39,7 @@ const cfgTpl = `
         "dst": "/path/to/dst" // 可以是文件/文件夹
         "parser": "jsVue",
         "generator": "tsClassVue",
-        "generatorPlugin": [
+        "generatorPlugins": [
             "addImportStore",
             "addParamsTypeAnnotation"
         ]
@@ -261,7 +261,7 @@ function parseAttr(str) {
     const parts = str.replace(/[ ]+/g, ' ').split(' ');
     const attr = {};
     for (const part of parts) {
-        const match = part.match(/([a-z]+)="([a-z]+)"/);
+        const match = part.match(/([a-z]+)=["']([a-z]+)["']/);
         if (match) {
             const [ _, key, value ] = match;
             attr[key] = value;
@@ -284,7 +284,7 @@ function formatAttr(attrs) {
  */
 function parseBlock(code) {
     const result = [];
-    const startRegexp = /<(script|template|style)([a-zA-Z0-9'"=!|& ()-:]*)?>/;
+    const startRegexp = /<(script|template|style)(.*["'])?>/;
     const endRegexp = /<\/(script|template|style)>/;
 
     let terminate = false;
