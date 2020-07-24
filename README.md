@@ -157,6 +157,10 @@ shuttle --cfg-tpl
 shuttle # 默认寻找pwd下的shuttle.config.json路径，如果没有找到，将不断向上寻找
 ```
 
+### 已知问题
+
+1. 不支持store.state为function的模式
+
 ### Test
 
 仅进行部分Test

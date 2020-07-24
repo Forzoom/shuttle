@@ -36078,8 +36078,11 @@ function formatAttr(attrs) {
 
 
 function parseBlock(code) {
-  var result = [];
-  var startRegexp = /<(script|template|style)(.*["'])?>/;
+  var result = []; // <template lang="html">
+  // <template v-if="a > 0">
+  // <template v-else>
+
+  var startRegexp = /<(script|template|style)([^"']*?(["'].*?["'])?)>/;
   var endRegexp = /<\/(script|template|style)>/;
   var terminate = false;
   var index = 0;
@@ -36165,7 +36168,8 @@ function parseBlock(code) {
 
 function formatBlock(blocks) {
   return blocks.map(function (block) {
-    return "<".concat(block.type, " ").concat(formatAttr(block.attr), ">\n").concat(block.content, "\n</").concat(block.type, ">\n");
+    var attr = formatAttr(block.attr);
+    return "<".concat(block.type).concat(attr != '' ? ' ' + attr : '', ">\n").concat(block.content, "\n</").concat(block.type, ">\n");
   }).join('');
 }
 

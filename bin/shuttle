@@ -155,7 +155,7 @@ async function handleParserGenerator(parserGeneratorName, src, dst) {
  * @param cfg 配置路径
  */
 function handleCfg(cfg) {
-    const configOptions = JSON.parse(fs.readFileSync(cfg).toString('utf-8'));
+    let configOptions = JSON.parse(fs.readFileSync(cfg).toString('utf-8'));
     if (!Array.isArray(configOptions)) {
         configOptions = [ configOptions ];
     }
@@ -231,14 +231,7 @@ function _addUnit(str) {
 const plugin = postcss.plugin('postcss-test-plugin', (opts) => {
     opts = opts || {};
     return (root, result) => {
-        // console.log('target1', root);
         root.walkRules((rule) => {
-            // decl.value = '40px';
-            // console.log(rule);
-            // rule.walkAtRules((atRule) => {
-            //     console.log(atRule);
-            // });
-
             for (var i = 0, len = (rule.nodes || []).length; i < len; i++) {
                 var node = rule.nodes[i];
                 if (node.type == 'atrule' && node.name == 'px2rem6') {
@@ -385,6 +378,7 @@ async function handleLessFile(src, dst) {
  * 处理vue文件
  */
 async function handleVueFile(src, dst) {
+    console.log(src);
     dst = dst || src;
     const code = fs.readFileSync(src, 'utf-8');
     const blocks = parseBlock(code);

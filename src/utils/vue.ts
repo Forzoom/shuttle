@@ -31,7 +31,10 @@ function formatAttr(attrs?: Attrs | null) {
  */
 export function parseBlock(code: string) {
     const result: Block[] = [];
-    const startRegexp = /<(script|template|style)(.*["'])?>/;
+    // <template lang="html">
+    // <template v-if="a > 0">
+    // <template v-else>
+    var startRegexp = /<(script|template|style)([^"']*?(["'].*?["'])?)>/;
     const endRegexp = /<\/(script|template|style)>/;
 
     let terminate = false;
@@ -105,5 +108,8 @@ export function parseBlock(code: string) {
  * @param blocks 所有的代码block
  */
 export function formatBlock(blocks: Block[]) {
-    return blocks.map(block => `<${block.type} ${formatAttr(block.attr)}>\n${block.content}\n</${block.type}>\n`).join('');
+    return blocks.map(block => {
+        const attr = formatAttr(block.attr);
+        return `<${block.type}${attr != '' ? ' ' + attr : ''}>\n${block.content}\n</${block.type}>\n`
+    }).join('');
 }
