@@ -66,7 +66,7 @@ export default class JSClassVueGenerator extends Generator {
                 lang: 'js',
             },
         };
-        const code = formatBlock([ ...vueNode.template, scriptBlock, ...vueNode.style ]);
+        const code = formatBlock([ ...(vueNode.template || []), scriptBlock, ...(vueNode.style || []) ]);
 
         return code;
     }

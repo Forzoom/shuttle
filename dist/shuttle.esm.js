@@ -37684,6 +37684,12 @@ var TSClassVueParser = /*#__PURE__*/function (_Parser) {
       vueNode.methods = methodNodes;
       vueNode.lifecycles = lifecycleNodes;
       vueNode.comments = exportDefaultDeclaration.comments;
+      vueNode.template = blocks.filter(function (block) {
+        return block.type === 'template';
+      });
+      vueNode.style = blocks.filter(function (block) {
+        return block.type === 'style';
+      });
       return vueNode;
     }
   }]);
@@ -37805,7 +37811,7 @@ var JSClassVueGenerator = /*#__PURE__*/function (_Generator) {
           lang: 'js'
         }
       };
-      var code = formatBlock([].concat(toConsumableArray(vueNode.template), [scriptBlock], toConsumableArray(vueNode.style)));
+      var code = formatBlock([].concat(toConsumableArray(vueNode.template || []), [scriptBlock], toConsumableArray(vueNode.style || [])));
       return code;
     }
   }, {

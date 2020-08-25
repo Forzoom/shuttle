@@ -206,6 +206,8 @@ export default class TSClassVueParser extends Parser {
         vueNode.lifecycles = lifecycleNodes;
 
         vueNode.comments = exportDefaultDeclaration.comments;
+        vueNode.template = blocks.filter(block => block.type === 'template');
+        vueNode.style = blocks.filter(block => block.type === 'style');
 
         return vueNode;
     }

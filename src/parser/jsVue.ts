@@ -8,10 +8,7 @@ import * as parser from '@babel/parser';
 
 import {
     Extract,
-    routerLifecycleNames,
     lifecycleNames,
-    writeFileSync,
-    recrusive,
     parseBlock,
 } from '@/utils';
 import {
