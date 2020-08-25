@@ -36,7 +36,7 @@ const cfgTpl = `
     // jsVue 转 tsClassVue
     {
         "src": "/path/to/src", // 可以是文件/文件夹
-        "dst": "/path/to/dst" // 可以是文件/文件夹
+        "dst": "/path/to/dst", // 可以是文件/文件夹
         "parser": "jsVue",
         "generator": "tsClassVue",
         "generatorPlugins": [
@@ -47,13 +47,13 @@ const cfgTpl = `
     // 处理 js 形式的 store 文件
     {
         "src": "/path/to/src", // 可以是文件/文件夹
-        "dst": "/path/to/dst" // 可以是文件/文件夹
+        "dst": "/path/to/dst", // 可以是文件/文件夹
         "parserGenerator": "jsStore"
     },
     // 处理 js 形式的 router 文件
     {
         "src": "/path/to/src", // 可以是文件/文件夹
-        "dst": "/path/to/dst" // 可以是文件/文件夹
+        "dst": "/path/to/dst", // 可以是文件/文件夹
         "parserGenerator": "jsRouter"
     },
 ];
@@ -129,13 +129,17 @@ function handle(parserName, generatorName, src, dst, parserPlugins, generatorPlu
 /**
  * 处理paserGenerator
  * @param parserGeneratorName
- * @param src 
- * @param dst 
+ * @param {string} src 
+ * @param {string} dst 
  */
 async function handleParserGenerator(parserGeneratorName, src, dst) {
     if (parserGeneratorName === 'less') {
-        recursive(src, dst, (src, dst) => {
-            handleVueFile(src, dst);
+        recursive(src, dst, (/** @type {string} */src, dst) => {
+            if (src.endsWith('.less')) {
+                handleLessFile(src, dst);
+            } else if (src.endsWith('.vue')) {
+                handleVueFile(src, dst);
+            }
         });
     } else {
         let parserGen = null;
@@ -186,27 +190,33 @@ function handleCfg(cfg) {
  * @param callback 
  */
 function recursive(input, output, callback) {
-    const queue = [ input ];
+    const queue = [ { input, output } ];
 
     // 深度优先搜索
     while (queue.length > 0) {
-        const filePath = queue.shift();
-        if (!filePath) {
+        const item = queue.shift();
+        if (!item) {
             continue;
         }
-        const stats = fs.statSync(filePath);
+        const { input, output } = item;
+        const stats = fs.statSync(input);
         const isDirectory = stats.isDirectory();
         if (isDirectory) {
             // 如果是文件夹，加入queue
-            const children = fs.readdirSync(filePath);
-            queue.unshift(...children.map(child => path.join(filePath, child)));
+            const children = fs.readdirSync(input);
+            queue.unshift(...children.map(child => {
+                return {
+                    input: path.join(input, child),
+                    output: path.join(output, child),
+                };
+            }));
         } else {
-            const outputPath = output + filePath.substr(input.length);
-            fs.mkdirSync(path.dirname(outputPath), {
+            // 确保文件夹存在
+            fs.mkdirSync(path.dirname(output), {
                 recursive: true,
                 mode: 0o755,
             });
-            callback(filePath, outputPath);
+            callback(input, output);
         }
     }
 }
@@ -277,7 +287,10 @@ function formatAttr(attrs) {
  */
 function parseBlock(code) {
     const result = [];
-    const startRegexp = /<(script|template|style)(.*["'])?>/;
+    // <template lang="html">
+    // <template v-if="a > 0">
+    // <template v-else>
+    var startRegexp = /<(script|template|style)([^"']*?(["'].*?["'])?)>/;
     const endRegexp = /<\/(script|template|style)>/;
 
     let terminate = false;
@@ -371,7 +384,7 @@ async function handleLessFile(src, dst) {
     dst = dst || src;
     const code = fs.readFileSync(src, 'utf-8');
     const newCode = (await handleLessCode(code)).css;
-    fs.writeFileSync(dst, newCode.toString());
+    fs.writeFileSync(dst, newCode);
 }
 
 /**
@@ -385,7 +398,7 @@ async function handleVueFile(src, dst) {
     if (!blocks || blocks.length === 0) {
         return;
     }
-    for (const block of blocks.filter(block => block.type === 'style')) {
+    for (const block of blocks.filter(block => block.type === 'style' && block.attr.lang === 'less')) {
         block.content = (await handleLessCode(block.content)).css;
     }
 
