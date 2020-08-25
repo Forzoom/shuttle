@@ -1,6 +1,6 @@
 {
   "name": "@forzoom/shuttle",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "main": "dist/shuttle.cjs.js",
   "module": "dist/shuttle.esm.js",
   "types": "./types",
